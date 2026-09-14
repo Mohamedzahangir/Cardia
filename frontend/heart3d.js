@@ -69,7 +69,7 @@ class CardiaHeart3D {
     this._innerGlow = null;
 
     // Annotations system
-    this.showAnnotations = true;
+    this.showAnnotations = false;
     this.annotationElements = [];
     this.annotationsContainer = null;
     this.annotationsSvg = null;
@@ -147,7 +147,7 @@ class CardiaHeart3D {
     this._bindInputs();
 
     // --- Setup DOM Overlays for Annotations ---
-    this._initAnnotationOverlays();
+    // this._initAnnotationOverlays();
 
     // --- Load GLB ---
     await this._loadGLB();

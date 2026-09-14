@@ -18,6 +18,7 @@ if str(RAG_DIR) not in sys.path:
 
 from retrieval.retriever import retrieve
 from answer.answer_engine import create_grounded_response
+from llm.gemini_generator import generate_grounded_answer
 from backend.services.sim_service import sim_service
 
 router = APIRouter(prefix="/api/rag", tags=["RAG"])
@@ -51,30 +52,11 @@ def ask_question(request: QuestionRequest):
             simulation_state=sim_obs,
         )
 
-        # Build readable human explanation synthesis from the grounded context
-        explanation_paragraphs = []
-        if sim_obs:
-            hr = sim_obs.get("heart_rate")
-            co = sim_obs.get("cardiac_output")
-            sv = sim_obs.get("stroke_volume")
-            map_p = sim_obs.get("map")
-            vol = sim_obs.get("blood_volume")
-            explanation_paragraphs.append(
-                f"**Current In-Silico Observation:** Heart rate is {hr:.1f} bpm, Stroke Volume is {sv:.1f} mL, "
-                f"Cardiac Output is {co:.2f} L/min, MAP is {map_p:.1f} mmHg, and Circulating Blood Volume is {vol:.2f} L."
-            )
-
-        if evidence:
-            primary_evidence = evidence[0].get("text", "")
-            explanation_paragraphs.append(primary_evidence)
-            if len(evidence) > 1:
-                explanation_paragraphs.append(evidence[1].get("text", ""))
-        else:
-            explanation_paragraphs.append(
-                "Based on Frank-Starling mechanics and cardiovascular reflex pathways: Changes in venous return directly modulate ventricular end-diastolic volume and subsequent stroke volume. Baroreceptor unloading regulates compensatory autonomic outflow to maintain mean arterial pressure."
-            )
-
-        synthesized_explanation = "\n\n".join(explanation_paragraphs)
+        # Build readable human explanation synthesis from the grounded context using Gemini
+        synthesized_explanation = generate_grounded_answer(
+            question=question,
+            grounded_response=response
+        )
 
         return {
             "status": "success",

@@ -280,9 +280,9 @@
 <!-- Interactive 3D Cardiac Mesh Canvas -->
 <canvas class="w-full h-full relative z-1 block cursor-grab active:cursor-grabbing" id="canvas-cardiac-3d" width="519" height="930"></canvas>
 </div>
-<!-- FLOATING HUD TOP ROW -->
-<div class="relative z-10 p-2 flex items-start justify-between pointer-events-none hidden">
-<!-- Top-Left: Chamber Mechanics -->
+<!-- FLOATING HUD — LEFT VERTICAL STACK -->
+<div class="absolute z-10 left-2 top-2 bottom-2 flex flex-col justify-between gap-2 pointer-events-none py-2">
+<!-- Left-1: Chamber Mechanics -->
 <div class="pointer-events-auto bg-white/95 backdrop-blur border border-surface-border rounded p-1.5 shadow-md flex flex-col gap-1 w-44">
 <div class="flex items-center justify-between pb-0.5 border-b border-surface-border">
 <div class="flex items-center gap-1">
@@ -309,7 +309,25 @@
 </div>
 </div>
 </div>
-<!-- Top-Right: Valvular Cycle Enunciators -->
+<!-- Left-2: Contractility & SVR indicator -->
+<div class="pointer-events-auto bg-white/95 backdrop-blur border border-surface-border rounded p-1 shadow-md flex items-center gap-2">
+<div class="w-7 h-7 relative flex items-center justify-center">
+<svg class="w-7 h-7 -rotate-90" viewBox="0 0 36 36">
+<path class="text-slate-200" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="3"></path>
+<path class="text-clinical-cyan transition-all duration-300" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" id="gauge-contractility-circle" stroke="currentColor" stroke-dasharray="50, 100" stroke-linecap="round" stroke-width="3"></path>
+</svg>
+<span class="absolute font-mono text-[8px] text-clinical-cyan font-bold" id="hud-contract-val">1.0x</span>
+</div>
+<div class="flex flex-col font-mono leading-none pr-1">
+<span class="text-[7px] text-text-dim uppercase font-semibold">SVR Load</span>
+<span class="text-[11px] font-bold text-text-primary" id="hud-svr-val">1120</span>
+<span class="text-[6px] text-text-dim">dyn·s/cm⁵</span>
+</div>
+</div>
+</div>
+<!-- FLOATING HUD — RIGHT VERTICAL STACK -->
+<div class="absolute z-10 right-2 top-2 bottom-2 flex flex-col justify-between gap-2 pointer-events-none py-2">
+<!-- Right-1: Valvular Cycle Enunciators -->
 <div class="pointer-events-auto bg-white/95 backdrop-blur border border-surface-border rounded p-1.5 shadow-md flex flex-col gap-1 w-40">
 <div class="flex items-center justify-between pb-0.5 border-b border-surface-border">
 <span class="font-mono text-[9px] uppercase font-bold text-text-dim tracking-wider">Valvular State</span>
@@ -334,36 +352,7 @@
 </div>
 </div>
 </div>
-</div>
-<!-- CENTER MOUSE INTERACTION HINT & ANNOTATIONS TOGGLE -->
-<div class="relative z-10 my-auto self-center flex items-center gap-2 pointer-events-none opacity-85 hover:opacity-100 transition-opacity hidden">
-<div class="bg-white/90 backdrop-blur border border-surface-border px-2.5 py-0.5 rounded-full flex items-center gap-1.5 text-[9px] font-mono text-text-muted shadow-sm">
-<span class="material-symbols-outlined text-[12px] text-clinical-cyan">3d_rotation</span>
-<span class="">Drag to rotate • Scroll zoom</span>
-</div>
-<button class="pointer-events-auto bg-white/95 backdrop-blur border border-surface-border hover:border-clinical-cyan hover:text-clinical-cyan px-2 py-0.5 rounded-full flex items-center gap-1 text-[9px] font-mono text-text-primary font-semibold shadow-sm transition-all cursor-pointer" id="btn-toggle-annotations" type="button">
-<span class="material-symbols-outlined text-[12px] text-clinical-cyan">label</span>
-<span id="txt-toggle-annotations">Labels: ON</span>
-</button>
-</div>
-<!-- FLOATING HUD BOTTOM ROW -->
-<div class="relative z-10 p-2 flex items-end justify-between pointer-events-none mt-auto hidden">
-<!-- Bottom-Left: Contractility & SVR indicator -->
-<div class="pointer-events-auto bg-white/95 backdrop-blur border border-surface-border rounded p-1 shadow-md flex items-center gap-2">
-<div class="w-7 h-7 relative flex items-center justify-center">
-<svg class="w-7 h-7 -rotate-90" viewBox="0 0 36 36">
-<path class="text-slate-200" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="3"></path>
-<path class="text-clinical-cyan transition-all duration-300" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" id="gauge-contractility-circle" stroke="currentColor" stroke-dasharray="50, 100" stroke-linecap="round" stroke-width="3"></path>
-</svg>
-<span class="absolute font-mono text-[8px] text-clinical-cyan font-bold" id="hud-contract-val">1.0x</span>
-</div>
-<div class="flex flex-col font-mono leading-none pr-1">
-<span class="text-[7px] text-text-dim uppercase font-semibold">SVR Load</span>
-<span class="text-[11px] font-bold text-text-primary" id="hud-svr-val">1120</span>
-<span class="text-[6px] text-text-dim">dyn·s/cm⁵</span>
-</div>
-</div>
-<!-- Bottom-Right: Coronary Perfusion Pressure & Demand -->
+<!-- Right-2: Coronary Perfusion Pressure & Demand -->
 <div class="pointer-events-auto bg-white/95 backdrop-blur border border-surface-border rounded p-1 shadow-md flex items-center gap-1.5 font-mono">
 <div class="flex flex-col text-right leading-none">
 <span class="text-[7px] text-text-dim uppercase font-semibold">Coronary CPP</span>
@@ -378,6 +367,8 @@
 </div>
 </div>
 </div>
+
+
 </section>
 <!-- ===================================================== -->
 <!-- RIGHT COLUMN: STACKED LIVE WAVEFORMS & METRICS (COL-3) -->
