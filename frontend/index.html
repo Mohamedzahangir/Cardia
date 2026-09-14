@@ -114,22 +114,17 @@
 <span class="font-mono text-[10px] text-clinical-emerald font-semibold tracking-wide">ONLINE / ACTIVE SIMULATION</span>
 </div>
 </div>
-<!-- Session Utilities & Profile -->
+<!-- Session Utilities -->
 <div class="flex items-center gap-2 shrink-0">
 <div class="flex items-center gap-1 font-mono text-[10px] text-text-dim bg-slate-50 px-2 py-0.5 rounded border border-surface-border font-medium">
 <span class="material-symbols-outlined text-[13px] text-clinical-teal">timer</span>
 <span class="text-text-muted">T+00:42:19.4</span>
 </div>
 <div class="w-px h-4 bg-surface-border mx-0.5"></div>
-<button class="w-7 h-7 rounded hover:bg-slate-100 text-text-muted hover:text-text-primary border border-surface-border flex items-center justify-center transition-colors shadow-xs" title="Settings" type="button">
-<span class="material-symbols-outlined text-[14px]">tune</span>
+<button class="px-2.5 py-1 rounded bg-sky-50 hover:bg-sky-100 text-clinical-cyan border border-sky-200 flex items-center gap-1.5 transition-colors font-semibold font-mono text-[10px] shadow-xs" id="btn-open-ask-why" type="button">
+<span class="material-symbols-outlined text-[13px]">neurology</span>
+<span>Ask Why (AI Reasoning)</span>
 </button>
-<div class="flex items-center gap-1.5 px-2 py-0.5 rounded bg-white hover:bg-slate-50 border border-surface-border shadow-xs cursor-pointer text-text-muted hover:text-text-primary transition-colors">
-<div class="w-5 h-5 rounded-full bg-clinical-cyan/10 text-clinical-cyan flex items-center justify-center font-mono font-bold text-[10px]">
-      DR
-    </div>
-<span class="font-mono text-[10px] font-semibold text-text-primary">Investigator</span>
-</div>
 </div></header>
 <!-- ========================================================================= -->
 <!-- MAIN ZERO-SCROLL COCKPIT GRID (COL 4 - 5 - 3)                            -->
@@ -219,7 +214,36 @@
 </div>
 <!-- 2. EDITABLE REAL-TIME TARGET VITALS & TELEMETRY INPUTS -->
 
-<div class="flex flex-col gap-1.5 bg-slate-50/90 border border-surface-border p-2 rounded shrink-0"><div class="flex items-center justify-between pb-0.5 border-b border-surface-border/60"><span class="font-mono text-[9px] uppercase tracking-wider text-clinical-teal font-semibold">A // Hemodynamic Knobs</span><button class="font-mono text-[8px] text-text-dim hover:text-clinical-cyan flex items-center gap-0.5" id="btn-reset-sliders" type="button"><span class="material-symbols-outlined text-[10px]">restart_alt</span> Reset</button></div><div class="flex flex-col gap-0.5"><div class="flex justify-between items-center font-mono text-[9px]"><span class="text-text-muted font-medium">Heart Rate</span><span class="text-clinical-cyan font-bold"><span id="val-hr" class="">74</span> <span class="text-text-dim text-[8px]">BPM</span></span></div><input class="w-full cursor-pointer" id="slider-hr" max="180" min="40" type="range" value="74"><div class="flex justify-between font-mono text-[8px] text-text-dim font-medium"><span class="">40 Brady</span><span class="">Nominal 74</span><span class="">180 Tachy</span></div></div><div class="flex flex-col gap-0.5"><div class="flex justify-between items-center font-mono text-[9px]"><span class="text-text-muted font-medium">Total Circulating Vol</span><span class="text-clinical-cyan font-bold"><span id="val-vol" class="">5.0</span> <span class="text-text-dim text-[8px]">L</span></span></div><input class="w-full cursor-pointer" id="slider-vol" max="7.0" min="3.0" step="0.1" type="range" value="5.0"><div class="flex justify-between font-mono text-[8px] text-text-dim font-medium"><span class="">3.0L (-40%)</span><span class="">5.0L Baseline</span><span class="">7.0L (+40%)</span></div></div><div class="flex flex-col gap-0.5"><div class="flex justify-between items-center font-mono text-[9px]"><span class="text-text-muted font-medium">LV Contractility (Inotropy)</span><span class="text-clinical-cyan font-bold"><span id="val-contract" class="">1.00</span> <span class="text-text-dim text-[8px]">x</span></span></div><input class="w-full cursor-pointer" id="slider-contract" max="2.0" min="0.4" step="0.05" type="range" value="1.0"><div class="flex justify-between font-mono text-[8px] text-text-dim font-medium"><span class="">0.4x Infarct</span><span class="">1.0x Norm</span><span class="">2.0x Hyper</span></div></div><div class="flex flex-col gap-0.5"><div class="flex justify-between items-center font-mono text-[9px]"><span class="text-text-muted font-medium">Systemic Vas. Res. (SVR)</span><span class="text-clinical-cyan font-bold"><span id="val-svr" class="">1120</span> <span class="text-text-dim text-[8px]">dyn·s</span></span></div><input class="w-full cursor-pointer" id="slider-svr" max="2200" min="600" step="20" type="range" value="1120"><div class="flex justify-between font-mono text-[8px] text-text-dim font-medium"><span class="">600 (VasoD)</span><span class="">1120</span><span class="">2200 (VasoC)</span></div></div></div><div class="flex flex-col gap-1 bg-slate-50/90 border border-surface-border p-2 rounded shrink-0"><div class="flex items-center justify-between pb-0.5 border-b border-surface-border/60"><span class="font-mono text-[9px] uppercase tracking-wider text-clinical-teal font-semibold">B // Pathophysiology Presets</span><span class="font-mono text-[8px] text-text-dim font-medium">QUICK INJECT</span></div><div class="grid grid-cols-2 gap-1.5"><button class="preset-btn p-1.5 rounded bg-rose-50/70 hover:bg-rose-100 border border-rose-200 text-left transition-all group" data-preset="hemorrhage" type="button"><div class="font-mono text-[9px] font-bold text-rose-700 flex items-center justify-between"><span class="">Hemorrhage</span><span class="text-[7px] opacity-80 px-1 rounded bg-rose-200/50">Shock</span></div><span class="font-mono text-[8px] text-rose-600 block leading-tight font-medium">-35% Vol / Tachy</span></button><button class="preset-btn p-1.5 rounded bg-sky-50/70 hover:bg-sky-100 border border-sky-200 text-left transition-all group" data-preset="hypertension" type="button"><div class="font-mono text-[9px] font-bold text-sky-800 flex items-center justify-between"><span class="">Hypertension</span><span class="text-[7px] opacity-80 px-1 rounded bg-sky-200/50">Afterload</span></div><span class="font-mono text-[8px] text-sky-700 block leading-tight font-medium">+65% SVR crisis</span></button><button class="preset-btn p-1.5 rounded bg-amber-50/70 hover:bg-amber-100 border border-amber-200 text-left transition-all group" data-preset="tachycardia" type="button"><div class="font-mono text-[9px] font-bold text-amber-800 flex items-center justify-between"><span class="">Tachycardia</span><span class="text-[7px] opacity-80 px-1 rounded bg-amber-200/50">SVT</span></div><span class="font-mono text-[8px] text-amber-700 block leading-tight font-medium">145 BPM Supravent.</span></button><button class="preset-btn p-1.5 rounded bg-emerald-50/70 hover:bg-emerald-100 border border-emerald-200 text-left transition-all group" data-preset="ischemia" type="button"><div class="font-mono text-[9px] font-bold text-emerald-800 flex items-center justify-between"><span class="">Ischemia</span><span class="text-[7px] opacity-80 px-1 rounded bg-emerald-200/50">Pump</span></div><span class="font-mono text-[8px] text-emerald-700 block leading-tight font-medium">0.55x Contract</span></button></div></div></div>
+<div class="flex flex-col gap-1.5 bg-slate-50/90 border border-surface-border p-2 rounded shrink-0"><div class="flex items-center justify-between pb-0.5 border-b border-surface-border/60"><span class="font-mono text-[9px] uppercase tracking-wider text-clinical-teal font-semibold">A // Hemodynamic Knobs</span><button class="font-mono text-[8px] text-text-dim hover:text-clinical-cyan flex items-center gap-0.5" id="btn-reset-sliders" type="button"><span class="material-symbols-outlined text-[10px]">restart_alt</span> Reset</button></div><div class="flex flex-col gap-0.5"><div class="flex justify-between items-center font-mono text-[9px]"><span class="text-text-muted font-medium">Heart Rate</span><span class="text-clinical-cyan font-bold"><span id="val-hr" class="">74</span> <span class="text-text-dim text-[8px]">BPM</span></span></div><input class="w-full cursor-pointer" id="slider-hr" max="180" min="40" type="range" value="74"><div class="flex justify-between font-mono text-[8px] text-text-dim font-medium"><span class="">40 Brady</span><span class="">Nominal 74</span><span class="">180 Tachy</span></div></div><div class="flex flex-col gap-0.5"><div class="flex justify-between items-center font-mono text-[9px]"><span class="text-text-muted font-medium">Total Circulating Vol</span><span class="text-clinical-cyan font-bold"><span id="val-vol" class="">5.0</span> <span class="text-text-dim text-[8px]">L</span></span></div><input class="w-full cursor-pointer" id="slider-vol" max="7.0" min="3.0" step="0.1" type="range" value="5.0"><div class="flex justify-between font-mono text-[8px] text-text-dim font-medium"><span class="">3.0L (-40%)</span><span class="">5.0L Baseline</span><span class="">7.0L (+40%)</span></div></div><div class="flex flex-col gap-0.5"><div class="flex justify-between items-center font-mono text-[9px]"><span class="text-text-muted font-medium">LV Contractility (Inotropy)</span><span class="text-clinical-cyan font-bold"><span id="val-contract" class="">1.00</span> <span class="text-text-dim text-[8px]">x</span></span></div><input class="w-full cursor-pointer" id="slider-contract" max="2.0" min="0.4" step="0.05" type="range" value="1.0"><div class="flex justify-between font-mono text-[8px] text-text-dim font-medium"><span class="">0.4x Infarct</span><span class="">1.0x Norm</span><span class="">2.0x Hyper</span></div></div><div class="flex flex-col gap-0.5"><div class="flex justify-between items-center font-mono text-[9px]"><span class="text-text-muted font-medium">Systemic Vas. Res. (SVR)</span><span class="text-clinical-cyan font-bold"><span id="val-svr" class="">1120</span> <span class="text-text-dim text-[8px]">dyn·s</span></span></div><input class="w-full cursor-pointer" id="slider-svr" max="2200" min="600" step="20" type="range" value="1120"><div class="flex justify-between font-mono text-[8px] text-text-dim font-medium"><span class="">600 (VasoD)</span><span class="">1120</span><span class="">2200 (VasoC)</span></div></div></div><div class="flex flex-col gap-1 bg-slate-50/90 border border-surface-border p-2 rounded shrink-0"><div class="flex items-center justify-between pb-0.5 border-b border-surface-border/60"><span class="font-mono text-[9px] uppercase tracking-wider text-clinical-teal font-semibold">B // Pathophysiology Presets</span><span class="font-mono text-[8px] text-text-dim font-medium">QUICK INJECT</span></div><div class="grid grid-cols-2 gap-1.5">
+<div class="flex flex-col gap-0.5">
+  <button class="preset-btn w-full p-1.5 rounded bg-rose-50/70 hover:bg-rose-100 border border-rose-200 text-left transition-all group" data-preset="hemorrhage" type="button">
+    <div class="font-mono text-[9px] font-bold text-rose-700 flex items-center justify-between"><span>Hemorrhage</span><span class="text-[7px] opacity-80 px-1 rounded bg-rose-200/50">Shock</span></div>
+    <span class="font-mono text-[8px] text-rose-600 block leading-tight font-medium">-35% Vol / Tachy</span>
+  </button>
+  <div class="h-1 w-full bg-rose-100 rounded overflow-hidden preset-progress-wrap hidden" data-preset-bar="hemorrhage"><div class="h-full bg-rose-500 rounded transition-none preset-progress-bar" style="width:0%"></div></div>
+</div>
+<div class="flex flex-col gap-0.5">
+  <button class="preset-btn w-full p-1.5 rounded bg-sky-50/70 hover:bg-sky-100 border border-sky-200 text-left transition-all group" data-preset="hypertension" type="button">
+    <div class="font-mono text-[9px] font-bold text-sky-800 flex items-center justify-between"><span>Hypertension</span><span class="text-[7px] opacity-80 px-1 rounded bg-sky-200/50">Afterload</span></div>
+    <span class="font-mono text-[8px] text-sky-700 block leading-tight font-medium">+65% SVR crisis</span>
+  </button>
+  <div class="h-1 w-full bg-sky-100 rounded overflow-hidden preset-progress-wrap hidden" data-preset-bar="hypertension"><div class="h-full bg-sky-500 rounded transition-none preset-progress-bar" style="width:0%"></div></div>
+</div>
+<div class="flex flex-col gap-0.5">
+  <button class="preset-btn w-full p-1.5 rounded bg-amber-50/70 hover:bg-amber-100 border border-amber-200 text-left transition-all group" data-preset="tachycardia" type="button">
+    <div class="font-mono text-[9px] font-bold text-amber-800 flex items-center justify-between"><span>Tachycardia</span><span class="text-[7px] opacity-80 px-1 rounded bg-amber-200/50">SVT</span></div>
+    <span class="font-mono text-[8px] text-amber-700 block leading-tight font-medium">145 BPM Supravent.</span>
+  </button>
+  <div class="h-1 w-full bg-amber-100 rounded overflow-hidden preset-progress-wrap hidden" data-preset-bar="tachycardia"><div class="h-full bg-amber-500 rounded transition-none preset-progress-bar" style="width:0%"></div></div>
+</div>
+<div class="flex flex-col gap-0.5">
+  <button class="preset-btn w-full p-1.5 rounded bg-emerald-50/70 hover:bg-emerald-100 border border-emerald-200 text-left transition-all group" data-preset="ischemia" type="button">
+    <div class="font-mono text-[9px] font-bold text-emerald-800 flex items-center justify-between"><span>Ischemia</span><span class="text-[7px] opacity-80 px-1 rounded bg-emerald-200/50">Pump</span></div>
+    <span class="font-mono text-[8px] text-emerald-700 block leading-tight font-medium">0.55x Contract</span>
+  </button>
+  <div class="h-1 w-full bg-emerald-100 rounded overflow-hidden preset-progress-wrap hidden" data-preset-bar="ischemia"><div class="h-full bg-emerald-500 rounded transition-none preset-progress-bar" style="width:0%"></div></div>
+</div>
+</div></div></div>
 <!-- ============================================================ -->
 <!-- VIEW B: PERTURBATION SLIDERS & PRESET CLINICAL SCENARIOS    -->
 <!-- ============================================================ -->
@@ -437,22 +461,17 @@
 <!-- ========================================================================= -->
 <footer class="h-8 w-full bg-white border-t border-surface-border px-3 flex items-center justify-between gap-2 shrink-0 z-30 font-mono text-[10px] shadow-xs">
 <div class="flex items-center gap-2">
-<!-- Button 1: Ask Why Copilot -->
-<button class="px-2.5 py-0.5 rounded bg-sky-50 hover:bg-sky-100 text-clinical-cyan border border-sky-200 flex items-center gap-1.5 transition-colors font-semibold" id="btn-open-ask-why" type="button">
-<span class="material-symbols-outlined text-[13px]">neurology</span>
-<span class="">Ask Why (AI Reasoning)</span>
-</button>
-<!-- Button 2: Fork Experiment -->
+<!-- Button 1: Fork Experiment -->
 <button class="px-2.5 py-0.5 rounded bg-white hover:bg-slate-50 text-text-primary border border-surface-border flex items-center gap-1.5 transition-colors font-medium shadow-xs" id="btn-open-fork" type="button">
 <span class="material-symbols-outlined text-[13px] text-emerald-600">alt_route</span>
 <span class="">Fork Experiment</span>
 </button>
-<!-- Button 3: ML Inference Estimation -->
+<!-- Button 2: ML Inference Estimation -->
 <button class="px-2.5 py-0.5 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1.5 transition-colors font-semibold shadow-xs" id="btn-open-ml" type="button">
 <span class="material-symbols-outlined text-[13px] text-emerald-700">psychology</span>
 <span>ML Parameter Inference</span>
 </button>
-<!-- Button 4: Reset Patient -->
+<!-- Button 3: Reset Patient -->
 <button class="px-2 py-0.5 rounded bg-white hover:bg-rose-50 hover:text-clinical-rose text-text-muted border border-surface-border flex items-center gap-1 transition-colors font-medium shadow-xs" id="btn-reset-patient" type="button">
 <span class="material-symbols-outlined text-[13px]">device_reset</span>
 <span>Reset Patient</span>
@@ -1109,32 +1128,157 @@
     });
   }
 
-  // Presets
+  // =========================================================================
+  // ANIMATED PRESET TRANSITIONS
+  // =========================================================================
+  const PRESET_DURATION_MS = 2500;
+  let presetAnimId = null;        // rAF id
+  let activePresetName = null;    // currently highlighted preset
+
+  // Target values per preset
+  const PRESET_TARGETS = {
+    hemorrhage:   { hr: 120, bloodVolume: 3.25, contractility: 1.25, svr: 1680 },
+    hypertension: { hr: state.hr, bloodVolume: 5.3, contractility: 1.1, svr: 1950 },
+    tachycardia:  { hr: 145, bloodVolume: state.bloodVolume, contractility: 1.15, svr: state.svr },
+    ischemia:     { hr: 95,  bloodVolume: state.bloodVolume, contractility: 0.55, svr: 1400 }
+  };
+
+  // Easing: cubic ease-in-out
+  function easeInOut(t) {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  }
+
+  function getPresetActiveClasses(preset) {
+    const map = {
+      hemorrhage:   { btn: 'preset-btn w-full p-1.5 rounded border text-left transition-all group ring-2 ring-rose-400 bg-rose-100 border-rose-400',   bar: 'bg-rose-500' },
+      hypertension: { btn: 'preset-btn w-full p-1.5 rounded border text-left transition-all group ring-2 ring-sky-400 bg-sky-100 border-sky-400',       bar: 'bg-sky-500' },
+      tachycardia:  { btn: 'preset-btn w-full p-1.5 rounded border text-left transition-all group ring-2 ring-amber-400 bg-amber-100 border-amber-400', bar: 'bg-amber-500' },
+      ischemia:     { btn: 'preset-btn w-full p-1.5 rounded border text-left transition-all group ring-2 ring-emerald-400 bg-emerald-100 border-emerald-400', bar: 'bg-emerald-500' }
+    };
+    return map[preset] || {};
+  }
+
+  function getPresetIdleClasses(preset) {
+    const map = {
+      hemorrhage:   'preset-btn w-full p-1.5 rounded bg-rose-50/70 hover:bg-rose-100 border border-rose-200 text-left transition-all group',
+      hypertension: 'preset-btn w-full p-1.5 rounded bg-sky-50/70 hover:bg-sky-100 border border-sky-200 text-left transition-all group',
+      tachycardia:  'preset-btn w-full p-1.5 rounded bg-amber-50/70 hover:bg-amber-100 border border-amber-200 text-left transition-all group',
+      ischemia:     'preset-btn w-full p-1.5 rounded bg-emerald-50/70 hover:bg-emerald-100 border border-emerald-200 text-left transition-all group'
+    };
+    return map[preset] || '';
+  }
+
+  function resetAllPresetUI() {
+    document.querySelectorAll('.preset-btn').forEach(b => {
+      const p = b.getAttribute('data-preset');
+      b.className = getPresetIdleClasses(p);
+      b.disabled = false;
+    });
+    document.querySelectorAll('.preset-progress-wrap').forEach(w => w.classList.add('hidden'));
+    document.querySelectorAll('.preset-progress-bar').forEach(bar => { bar.style.width = '0%'; });
+  }
+
+  function firePreset(presetName) {
+    // Cancel any in-flight animation
+    if (presetAnimId !== null) {
+      cancelAnimationFrame(presetAnimId);
+      presetAnimId = null;
+    }
+
+    // Snapshot targets with current state for dynamic presets
+    const targets = {
+      hemorrhage:   { hr: 120, bloodVolume: 3.25, contractility: 1.25, svr: 1680 },
+      hypertension: { hr: state.hr, bloodVolume: 5.3, contractility: 1.1, svr: 1950 },
+      tachycardia:  { hr: 145, bloodVolume: state.bloodVolume, contractility: 1.15, svr: state.svr },
+      ischemia:     { hr: 95,  bloodVolume: state.bloodVolume, contractility: 0.55, svr: 1400 }
+    };
+    const target = targets[presetName];
+    if (!target) return;
+
+    const startHr          = state.hr;
+    const startVol         = state.bloodVolume;
+    const startContract    = state.contractility;
+    const startSvr         = state.svr;
+
+    const endHr            = target.hr;
+    const endVol           = target.bloodVolume;
+    const endContract      = target.contractility;
+    const endSvr           = target.svr;
+
+    // Reset all preset UI, then style active one
+    resetAllPresetUI();
+    activePresetName = presetName;
+
+    // Disable all preset buttons while animating
+    document.querySelectorAll('.preset-btn').forEach(b => { b.disabled = true; });
+
+    // Highlight the active button
+    const activeBtn = document.querySelector(`.preset-btn[data-preset="${presetName}"]`);
+    if (activeBtn) {
+      activeBtn.className = getPresetActiveClasses(presetName).btn || activeBtn.className;
+    }
+
+    // Show progress bar
+    const barWrap = document.querySelector(`.preset-progress-wrap[data-preset-bar="${presetName}"]`);
+    const barFill = barWrap ? barWrap.querySelector('.preset-progress-bar') : null;
+    if (barWrap) barWrap.classList.remove('hidden');
+    if (barFill) barFill.style.width = '0%';
+
+    const startTime = performance.now();
+
+    function tick(now) {
+      const elapsed = now - startTime;
+      const rawT = Math.min(1, elapsed / PRESET_DURATION_MS);
+      const t = easeInOut(rawT);
+
+      // Interpolate state
+      state.hr          = startHr       + (endHr       - startHr)       * t;
+      state.bloodVolume = startVol      + (endVol      - startVol)      * t;
+      state.contractility = startContract + (endContract - startContract) * t;
+      state.svr         = startSvr      + (endSvr      - startSvr)      * t;
+
+      // Update sliders & readouts
+      updateInputsFromState();
+      updateTelemetryUI();
+      sendParametersToBackend();
+
+      // Progress bar
+      if (barFill) barFill.style.width = `${rawT * 100}%`;
+
+      if (rawT < 1) {
+        presetAnimId = requestAnimationFrame(tick);
+      } else {
+        // Snap to exact targets
+        state.hr          = endHr;
+        state.bloodVolume = endVol;
+        state.contractility = endContract;
+        state.svr         = endSvr;
+        updateInputsFromState();
+        updateTelemetryUI();
+        sendParametersToBackend();
+        flashSync();
+        presetAnimId = null;
+
+        // Re-enable all buttons; keep active button highlighted
+        document.querySelectorAll('.preset-btn').forEach(b => { b.disabled = false; });
+        // Hide progress bar
+        if (barWrap) barWrap.classList.add('hidden');
+        if (barFill) barFill.style.width = '0%';
+        // Keep active button ring
+        if (activeBtn) {
+          activeBtn.className = getPresetActiveClasses(presetName).btn || activeBtn.className;
+        }
+      }
+    }
+
+    presetAnimId = requestAnimationFrame(tick);
+  }
+
   const presetBtns = document.querySelectorAll('.preset-btn');
   presetBtns.forEach(btn => {
     btn.addEventListener('click', () => {
       const p = btn.getAttribute('data-preset');
-      if (p === 'hemorrhage') {
-        state.bloodVolume = 3.25;
-        state.hr = 120;
-        state.svr = 1680;
-        state.contractility = 1.25;
-      } else if (p === 'hypertension') {
-        state.svr = 1950;
-        state.contractility = 1.1;
-        state.bloodVolume = 5.3;
-      } else if (p === 'tachycardia') {
-        state.hr = 145;
-        state.contractility = 1.15;
-      } else if (p === 'ischemia') {
-        state.contractility = 0.55;
-        state.svr = 1400;
-        state.hr = 95;
-      }
-      updateInputsFromState();
-      sendParametersToBackend();
-      updateTelemetryUI();
-      flashSync();
+      firePreset(p);
     });
   });
 
@@ -1175,6 +1319,14 @@
   const btnResetPatient = document.getElementById('btn-reset-patient');
   if (btnResetPatient) {
     btnResetPatient.addEventListener('click', () => {
+      // Cancel any in-flight preset animation
+      if (presetAnimId !== null) {
+        cancelAnimationFrame(presetAnimId);
+        presetAnimId = null;
+      }
+      activePresetName = null;
+      resetAllPresetUI();
+
       state.hr = 74;
       state.bloodVolume = 5.0;
       state.contractility = 1.0;
