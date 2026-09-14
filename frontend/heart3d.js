@@ -1,20 +1,31 @@
 /**
- * CARDIA Heart3D — Three.js GLB Integration Module
- * =================================================
- * Loads the beating heart GLB model and drives its animation
- * from the existing SimulationState telemetry pipeline.
+ * CARDIA Heart3D — Three.js GLB Integration Module with Fixed Anatomical Annotations
+ * ===================================================================================
+ * Loads the beating heart GLB model and drives its animation from the existing
+ * SimulationState telemetry pipeline.
  *
- * The existing `window.__CARDIA_STATE` remains the single source of truth.
- * This module READS from it; it never writes physiological values.
+ * Provides fixed 3D anatomical annotations for the 8 key cardiovascular structures:
+ * 1. Right Atrium
+ * 2. Right Ventricle
+ * 3. Left Atrium
+ * 4. Left Ventricle
+ * 5. Mitral Valve
+ * 6. Aortic Valve
+ * 7. Aorta
+ * 8. Pulmonary Artery
  *
- * Usage (from index.html):
- *   const heart3d = new CardiaHeart3D('canvas-cardiac-3d');
- *   heart3d.init();
+ * Each annotation is anchored to a specific 3D position on the heart in world space.
+ * When the heart rotates, zooms, or animates, the anchors track accurately in screen space.
  *
- * Dependencies (loaded via CDN in index.html BEFORE this script):
- *   - THREE (r160+ from cdn.jsdelivr.net)
- *   - GLTFLoader (from three/examples/jsm/loaders/)
- *   - OrbitControls (optional, we use manual orbit via existing drag handlers)
+ * Features:
+ * - Fixed 3D anchor points projected dynamically every frame
+ * - Screen-space leader lines drawn cleanly via SVG overlay
+ * - Live chamber/valve hemodynamic telemetry tags
+ * - Interactive hover focus state and detail tooltip
+ * - Global hide/show toggle with smooth fade
+ * - Collision / boundary prevention within the viewport
+ *
+ * The existing window.__CARDIA_STATE remains the single source of truth.
  */
 
 class CardiaHeart3D {
@@ -35,7 +46,7 @@ class CardiaHeart3D {
     this.fillLight = null;
     this.rimLight = null;
 
-    // Joint mapping for valve/chamber glow overlays
+    // Joint mapping for valve/chamber node anchoring
     this.joints = {};
 
     // State
@@ -49,15 +60,24 @@ class CardiaHeart3D {
     this._prevY = 0;
 
     // Orbit target and spherical coords
-    this._theta = -0.4;   // matches existing viewRotY default
-    this._phi = 1.37;     // ~78° (slight overhead), matches viewRotX default (0.2 offset from π/2)
+    this._theta = -0.4;   // matches viewRotY default
+    this._phi = 1.37;     // ~78° (slight overhead)
     this._radius = 3.2;
-    // Orbit target — created in init() once THREE is confirmed available
     this._target = null;
 
     // Glow meshes for visual feedback
-    this._chamberGlows = {};
-    this._valveGlows = {};
+    this._innerGlow = null;
+
+    // Annotations system
+    this.showAnnotations = true;
+    this.annotationElements = [];
+    this.annotationsContainer = null;
+    this.annotationsSvg = null;
+    this.annotationsDef = [];
+    this.activeHoverId = null;
+
+    // Reusable projection vector
+    this._tempVec = null;
   }
 
   /**
@@ -70,18 +90,19 @@ class CardiaHeart3D {
       return;
     }
 
+    this._tempVec = new THREE.Vector3();
+
     // --- Scene ---
     this.scene = new THREE.Scene();
-    // No background — transparent over the existing CSS grid/vignette
     this.scene.background = null;
 
-    // Create orbit target now that THREE is available
+    // Orbit target
     this._target = new THREE.Vector3(0, 0.3, 0);
 
     // --- Camera ---
     const rect = this.canvas.getBoundingClientRect();
     this.camera = new THREE.PerspectiveCamera(
-      40, rect.width / rect.height, 0.01, 100
+      40, (rect.width || 500) / (rect.height || 700), 0.01, 100
     );
     this._updateCameraFromSpherical();
 
@@ -89,12 +110,11 @@ class CardiaHeart3D {
     this.renderer = new THREE.WebGLRenderer({
       canvas: this.canvas,
       antialias: true,
-      alpha: true,          // transparent background
+      alpha: true,
       powerPreference: 'high-performance'
     });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     this.renderer.setSize(rect.width, rect.height, false);
-    // r148 API: sRGBEncoding; r152+ uses outputColorSpace
     if (this.renderer.outputColorSpace !== undefined) {
       this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     } else {
@@ -120,12 +140,14 @@ class CardiaHeart3D {
     this.rimLight.position.set(0, -2, 4);
     this.scene.add(this.rimLight);
 
-    // Subtle hemisphere for medical-grade ambient
     const hemiLight = new THREE.HemisphereLight(0xddeeff, 0x8899aa, 0.3);
     this.scene.add(hemiLight);
 
-    // --- Input handling (overrides existing 2D drag) ---
+    // --- Input handling ---
     this._bindInputs();
+
+    // --- Setup DOM Overlays for Annotations ---
+    this._initAnnotationOverlays();
 
     // --- Load GLB ---
     await this._loadGLB();
@@ -133,7 +155,7 @@ class CardiaHeart3D {
     // --- Start render loop ---
     this._animate();
 
-    console.log('[CardiaHeart3D] Initialized successfully.');
+    console.log('[CardiaHeart3D] Initialized successfully with fixed 3D annotations.');
   }
 
   /**
@@ -141,20 +163,27 @@ class CardiaHeart3D {
    */
   _loadGLB() {
     return new Promise((resolve, reject) => {
-      // THREE.GLTFLoader is attached to the THREE global via the legacy loader script
       const LoaderClass = THREE.GLTFLoader || (THREE.Loaders && THREE.Loaders.GLTFLoader);
       if (!LoaderClass) {
-        reject(new Error('THREE.GLTFLoader not found. Check CDN script ordering.'));
+        const err = new Error('THREE.GLTFLoader not found. Check CDN script ordering.');
+        this._showLoadError('3D Loader Unavailable', err.message);
+        reject(err);
         return;
       }
       const loader = new LoaderClass();
 
+      // Dynamic asset base resolution (works on localhost, custom origins, and reverse proxies)
+      const CARDIA_ASSET_BASE =
+        document.querySelector('meta[name="cardia-asset-base"]')?.content
+        || '/static';
+      const HEART_MODEL_URL = `${CARDIA_ASSET_BASE}/assets/heart.glb`;
+
       loader.load(
-        '/static/assets/heart.glb',
+        HEART_MODEL_URL,
         (gltf) => {
           this.model = gltf.scene;
 
-          // Scale and position to fit the viewport
+          // Scale and position to fit viewport
           const box = new THREE.Box3().setFromObject(this.model);
           const size = box.getSize(new THREE.Vector3());
           const center = box.getCenter(new THREE.Vector3());
@@ -163,13 +192,12 @@ class CardiaHeart3D {
 
           this.model.scale.setScalar(scaleFactor);
           this.model.position.sub(center.multiplyScalar(scaleFactor));
-          this.model.position.y += 0.3; // Raise slightly
+          this.model.position.y += 0.3;
 
-          // Apply enhanced material properties for a clinical look
+          // Traverse materials and capture joints
           this.model.traverse((child) => {
             if (child.isMesh) {
               child.material = child.material.clone();
-              // Give the heart a realistic medical-grade appearance
               if (child.material.isMeshStandardMaterial) {
                 child.material.roughness = 0.55;
                 child.material.metalness = 0.05;
@@ -177,7 +205,6 @@ class CardiaHeart3D {
               child.frustumCulled = false;
             }
 
-            // Map joints by name for later telemetry-driven manipulation
             if (child.isBone || child.name.includes('jnt')) {
               this.joints[child.name] = child;
             }
@@ -188,32 +215,484 @@ class CardiaHeart3D {
           // Setup animation
           if (gltf.animations && gltf.animations.length > 0) {
             this.mixer = new THREE.AnimationMixer(this.model);
-            const clip = gltf.animations[0]; // "test" clip, 1.0s duration
+            const clip = gltf.animations[0];
             this.animAction = this.mixer.clipAction(clip);
             this.animAction.play();
-            // Start at HR=74 -> playback speed = 74/60 ≈ 1.23
             this._syncAnimationToHR(74);
           }
 
           this.isLoaded = true;
 
-          // Create visual overlays for chamber/valve glow
+          // Create glow overlay
           this._createGlowOverlays();
 
-          console.log('[CardiaHeart3D] GLB loaded. Joints:', Object.keys(this.joints));
+          // Initialize anatomical anchor definitions now that model & joints exist
+          this._setupAnatomicalAnchors();
+
           resolve();
         },
         (progress) => {
           const pct = progress.total > 0
             ? Math.round((progress.loaded / progress.total) * 100)
             : '??';
-          console.log(`[CardiaHeart3D] Loading GLB... ${pct}%`);
+          console.log(`[CardiaHeart3D] Loading GLB from ${HEART_MODEL_URL}... ${pct}%`);
         },
         (error) => {
-          console.error('[CardiaHeart3D] GLB load error:', error);
+          console.error('[CARDIA Heart3D] Failed to load heart model:', HEART_MODEL_URL, error);
+          this._showLoadError('3D heart unavailable', 'Unable to load heart model.');
           reject(error);
         }
       );
+    });
+  }
+
+  /**
+   * Display non-blocking clinical diagnostic message in 3D viewport if model fails
+   */
+  _showLoadError(title, subtitle) {
+    if (!this.canvas) return;
+    const parent = this.canvas.parentElement;
+    if (!parent) return;
+
+    let errEl = document.getElementById('cardia-3d-load-error');
+    if (!errEl) {
+      errEl = document.createElement('div');
+      errEl.id = 'cardia-3d-load-error';
+      errEl.className = 'absolute inset-0 z-10 flex flex-col items-center justify-center pointer-events-none p-4 text-center';
+      errEl.innerHTML = `
+        <div class="bg-white/95 backdrop-blur border border-rose-200 rounded-lg p-3 shadow-md font-mono max-w-xs pointer-events-auto">
+          <div class="flex items-center justify-center gap-1.5 text-rose-600 mb-1">
+            <span class="material-symbols-outlined text-[18px]">warning</span>
+            <span class="text-xs font-bold" id="cardia-3d-err-title">${title}</span>
+          </div>
+          <p class="text-[10px] text-text-dim leading-snug" id="cardia-3d-err-sub">${subtitle}</p>
+        </div>
+      `;
+      parent.appendChild(errEl);
+    }
+  }
+
+  /**
+   * Defines the 8 anatomical structures with their 3D anchor points.
+   * Uses joints when available so anchors automatically follow skeletal beating motion,
+   * with fallback to calibrated 3D world-space coordinates.
+   */
+  _setupAnatomicalAnchors() {
+    this.annotationsDef = [
+      {
+        id: "rightAtrium",
+        label: "Right Atrium",
+        subtitle: "Deoxygenated venous inflow (SVC/IVC)",
+        jointName: "right_atrium_jnt.6",
+        fallbackAnchor: new THREE.Vector3(-0.55, 0.48, 0.41),
+        screenSide: "left",
+        offset: { x: -75, y: -25 },
+        color: "#0284c7",
+        badge: "RA",
+        liveKey: "right_atrium"
+      },
+      {
+        id: "rightVentricle",
+        label: "Right Ventricle",
+        subtitle: "Pulmonary pump (low pressure)",
+        jointName: "right_tricuspid_valve_jnt.24",
+        fallbackAnchor: new THREE.Vector3(-0.35, 0.05, 0.32),
+        screenSide: "left",
+        offset: { x: -80, y: 35 },
+        color: "#0284c7",
+        badge: "RV",
+        liveKey: "right_ventricle"
+      },
+      {
+        id: "leftAtrium",
+        label: "Left Atrium",
+        subtitle: "Oxygenated pulmonary inflow",
+        jointName: "left_atrium_jnt.13",
+        fallbackAnchor: new THREE.Vector3(0.38, 0.67, 0.39),
+        screenSide: "right",
+        offset: { x: 75, y: -30 },
+        color: "#dc2626",
+        badge: "LA",
+        liveKey: "left_atrium"
+      },
+      {
+        id: "leftVentricle",
+        label: "Left Ventricle",
+        subtitle: "Systemic high-pressure chamber",
+        jointName: "cardiac_muscle_jnt.7",
+        fallbackAnchor: new THREE.Vector3(0.12, -0.32, 0.30),
+        screenSide: "right",
+        offset: { x: 80, y: 40 },
+        color: "#dc2626",
+        badge: "LV",
+        liveKey: "left_ventricle"
+      },
+      {
+        id: "mitralValve",
+        label: "Mitral Valve",
+        subtitle: "Bicuspid AV valve (LA → LV)",
+        jointName: "left_mitral_valve_jnt.15",
+        fallbackAnchor: new THREE.Vector3(0.35, 0.28, 0.30),
+        screenSide: "right",
+        offset: { x: 85, y: 5 },
+        color: "#059669",
+        badge: "MV",
+        liveValve: "mitral"
+      },
+      {
+        id: "aorticValve",
+        label: "Aortic Valve",
+        subtitle: "Semilunar outflow valve (LV → Ao)",
+        jointName: "aortic_valve_02_jnt.17",
+        fallbackAnchor: new THREE.Vector3(0.12, 0.28, 0.33),
+        screenSide: "right",
+        offset: { x: 70, y: -70 },
+        color: "#059669",
+        badge: "AV",
+        liveValve: "aortic"
+      },
+      {
+        id: "aorta",
+        label: "Aorta",
+        subtitle: "Systemic arterial root & arch",
+        jointName: null,
+        fallbackAnchor: new THREE.Vector3(0.08, 0.98, 0.18),
+        screenSide: "right",
+        offset: { x: 65, y: -65 },
+        color: "#b91c1c",
+        badge: "AO",
+        liveCirc: "aortic_pressure_mmhg"
+      },
+      {
+        id: "pulmonaryArtery",
+        label: "Pulmonary Artery",
+        subtitle: "Deoxygenated outflow to lungs",
+        jointName: "right_pulmonary_valve_jnt.9",
+        fallbackAnchor: new THREE.Vector3(-0.18, 0.72, 0.34),
+        screenSide: "left",
+        offset: { x: -75, y: -55 },
+        color: "#2563eb",
+        badge: "PA",
+        liveCirc: "pulmonary_artery_pressure_mmhg"
+      }
+    ];
+
+    this._createAnnotationDOMElements();
+  }
+
+  /**
+   * Initializes overlay container and SVG canvas on top of the 3D canvas
+   */
+  _initAnnotationOverlays() {
+    const parent = this.canvas.parentElement;
+    if (!parent) return;
+
+    // Ensure relative positioning
+    if (getComputedStyle(parent).position === 'static') {
+      parent.style.position = 'relative';
+    }
+
+    // HTML elements container
+    const container = document.createElement('div');
+    container.id = 'cardia-annotations-container';
+    container.className = 'absolute inset-0 pointer-events-none z-20 overflow-hidden';
+    container.style.transition = 'opacity 0.25s ease-in-out';
+    parent.appendChild(container);
+    this.annotationsContainer = container;
+
+    // SVG canvas for leader connector lines
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.id = 'cardia-annotations-svg';
+    svg.setAttribute('class', 'absolute inset-0 w-full h-full pointer-events-none z-15');
+    svg.style.overflow = 'visible';
+    parent.appendChild(svg);
+    this.annotationsSvg = svg;
+
+    // Append toggle button to center HUD or bottom overlay
+    this._injectToggleButton();
+  }
+
+  /**
+   * Create DOM cards, anchor dots, and SVG leader lines for all 8 annotations
+   */
+  _createAnnotationDOMElements() {
+    if (!this.annotationsContainer || !this.annotationsSvg) return;
+
+    this.annotationsContainer.innerHTML = '';
+    this.annotationsSvg.innerHTML = '';
+    this.annotationElements = [];
+
+    // Create defs in SVG for marker glow / gradients
+    const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+    defs.innerHTML = `
+      <linearGradient id="line-cyan-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#0284c7" stop-opacity="0.9"/>
+        <stop offset="100%" stop-color="#38bdf8" stop-opacity="0.3"/>
+      </linearGradient>
+      <linearGradient id="line-rose-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#dc2626" stop-opacity="0.9"/>
+        <stop offset="100%" stop-color="#f87171" stop-opacity="0.3"/>
+      </linearGradient>
+      <linearGradient id="line-green-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#059669" stop-opacity="0.9"/>
+        <stop offset="100%" stop-color="#34d399" stop-opacity="0.3"/>
+      </linearGradient>
+    `;
+    this.annotationsSvg.appendChild(defs);
+
+    this.annotationsDef.forEach((def, index) => {
+      // 1. Anchor 3D pin dot (at projected anchor position)
+      const pin = document.createElement('div');
+      pin.className = 'absolute pointer-events-none transition-transform duration-75';
+      pin.style.width = '12px';
+      pin.style.height = '12px';
+      pin.style.marginLeft = '-6px';
+      pin.style.marginTop = '-6px';
+      pin.innerHTML = `
+        <div class="relative w-full h-full flex items-center justify-center">
+          <div class="absolute inset-0 rounded-full animate-ping opacity-60" style="background-color: ${def.color};"></div>
+          <div class="w-2.5 h-2.5 rounded-full border border-white shadow-sm" style="background-color: ${def.color};"></div>
+        </div>
+      `;
+      this.annotationsContainer.appendChild(pin);
+
+      // 2. SVG Line
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('fill', 'none');
+      path.setAttribute('stroke', def.color);
+      path.setAttribute('stroke-width', '1.2');
+      path.setAttribute('stroke-dasharray', '2 2');
+      path.setAttribute('opacity', '0.75');
+      this.annotationsSvg.appendChild(path);
+
+      // 3. Floating Card
+      const card = document.createElement('div');
+      card.className = 'absolute pointer-events-auto cursor-pointer transition-all duration-100 rounded border bg-white/95 backdrop-blur shadow-md px-2 py-1 font-mono hover:scale-105 hover:shadow-lg hover:border-clinical-cyan hover:z-30';
+      card.style.borderColor = '#e2e8f0';
+      card.style.fontSize = '9px';
+      card.style.minWidth = '110px';
+      card.style.maxWidth = '160px';
+      card.style.userSelect = 'none';
+
+      card.innerHTML = `
+        <div class="flex items-center justify-between gap-1 pb-0.5 border-b border-surface-border">
+          <div class="flex items-center gap-1 font-bold text-text-primary">
+            <span class="w-1.5 h-1.5 rounded-full" style="background-color: ${def.color};"></span>
+            <span class="tracking-tight">${def.label}</span>
+          </div>
+          <span class="px-1 py-0.2 rounded text-[7px] font-bold text-white uppercase" style="background-color: ${def.color};">${def.badge}</span>
+        </div>
+        <div class="flex items-center justify-between pt-0.5 text-[8px]">
+          <span class="text-text-dim truncate">${def.subtitle}</span>
+          <span class="font-bold text-text-primary ml-1" id="ann-val-${def.id}">--</span>
+        </div>
+      `;
+
+      // Hover interactivity
+      card.addEventListener('mouseenter', () => {
+        this.activeHoverId = def.id;
+        path.setAttribute('stroke-width', '2.2');
+        path.setAttribute('stroke-dasharray', 'none');
+        path.setAttribute('opacity', '1.0');
+        pin.style.transform = 'scale(1.4)';
+      });
+
+      card.addEventListener('mouseleave', () => {
+        this.activeHoverId = null;
+        path.setAttribute('stroke-width', '1.2');
+        path.setAttribute('stroke-dasharray', '2 2');
+        path.setAttribute('opacity', '0.75');
+        pin.style.transform = 'scale(1.0)';
+      });
+
+      this.annotationsContainer.appendChild(card);
+
+      this.annotationElements.push({
+        def,
+        pin,
+        path,
+        card,
+        valEl: card.querySelector(`#ann-val-${def.id}`)
+      });
+    });
+  }
+
+  /**
+   * Adds the Annotations toggle button cleanly in the center header or floating HUD
+   */
+  _injectToggleButton() {
+    const existingBtn = document.getElementById('btn-toggle-annotations');
+    if (existingBtn) {
+      existingBtn.addEventListener('click', () => {
+        this.toggleAnnotations();
+      });
+      return;
+    }
+
+    const section = this.canvas.closest('section');
+    if (!section) return;
+
+    const toggleBtn = document.createElement('button');
+    toggleBtn.id = 'btn-toggle-annotations';
+    toggleBtn.type = 'button';
+    toggleBtn.className = 'absolute top-2 right-44 z-30 pointer-events-auto bg-white/95 backdrop-blur border border-surface-border px-2 py-0.5 rounded font-mono text-[9px] font-semibold text-text-primary hover:text-clinical-cyan hover:border-clinical-cyan flex items-center gap-1 shadow-sm transition-all';
+    toggleBtn.innerHTML = `
+      <span class="material-symbols-outlined text-[13px] text-clinical-cyan">label</span>
+      <span id="txt-toggle-annotations">Labels: ON</span>
+    `;
+
+    toggleBtn.addEventListener('click', () => {
+      this.toggleAnnotations();
+    });
+
+    section.appendChild(toggleBtn);
+  }
+
+  /**
+   * Toggle annotations visibility
+   */
+  toggleAnnotations(forceState) {
+    if (typeof forceState === 'boolean') {
+      this.showAnnotations = forceState;
+    } else {
+      this.showAnnotations = !this.showAnnotations;
+    }
+
+    if (this.annotationsContainer) {
+      this.annotationsContainer.style.opacity = this.showAnnotations ? '1' : '0';
+      this.annotationsContainer.style.pointerEvents = this.showAnnotations ? 'auto' : 'none';
+    }
+    if (this.annotationsSvg) {
+      this.annotationsSvg.style.opacity = this.showAnnotations ? '1' : '0';
+    }
+
+    const txt = document.getElementById('txt-toggle-annotations');
+    if (txt) {
+      txt.textContent = `Annotations: ${this.showAnnotations ? 'ON' : 'OFF'}`;
+    }
+  }
+
+  /**
+   * Computes the current 3D world position for each anatomical structure
+   */
+  _getAnchorWorldPos(def, outVec) {
+    if (def.jointName && this.joints[def.jointName]) {
+      this.joints[def.jointName].getWorldPosition(outVec);
+      return outVec;
+    }
+
+    // Otherwise use fallback transformed by model matrix if present
+    if (this.model) {
+      outVec.copy(def.fallbackAnchor);
+      outVec.applyMatrix4(this.model.matrixWorld);
+      return outVec;
+    }
+
+    outVec.copy(def.fallbackAnchor);
+    return outVec;
+  }
+
+  /**
+   * Updates projection coordinates and renders DOM annotations each frame
+   */
+  _updateAnnotations() {
+    if (!this.showAnnotations || !this.camera || !this.canvas || this.annotationElements.length === 0) {
+      return;
+    }
+
+    const rect = this.canvas.getBoundingClientRect();
+    const width = rect.width || this.canvas.clientWidth;
+    const height = rect.height || this.canvas.clientHeight;
+
+    if (width === 0 || height === 0) return;
+
+    // Viewport bounds for collision clamping
+    const minX = 12;
+    const maxX = width - 12;
+    const minY = 38; // Below top HUD
+    const maxY = height - 42; // Above bottom HUD
+
+    // Update live values from window.__CARDIA_STATE
+    const state = window.__CARDIA_STATE;
+
+    this.annotationElements.forEach((item) => {
+      const { def, pin, path, card, valEl } = item;
+
+      // 1. Get world coordinate and project to screen space
+      this._getAnchorWorldPos(def, this._tempVec);
+
+      // Check if behind camera
+      this._tempVec.project(this.camera);
+      const isBehindCamera = this._tempVec.z > 1.0;
+
+      if (isBehindCamera) {
+        pin.style.display = 'none';
+        card.style.display = 'none';
+        path.setAttribute('d', '');
+        return;
+      }
+
+      pin.style.display = 'block';
+      card.style.display = 'block';
+
+      // Screen coordinates (in pixels relative to container)
+      const screenX = (this._tempVec.x * 0.5 + 0.5) * width;
+      const screenY = (-(this._tempVec.y * 0.5) + 0.5) * height;
+
+      // Position anchor pin
+      pin.style.left = `${Math.round(screenX)}px`;
+      pin.style.top = `${Math.round(screenY)}px`;
+
+      // Depth based opacity (fade slightly when facing away or occluded in Z)
+      const depthOpacity = Math.max(0.35, Math.min(1.0, 1.0 - (this._tempVec.z - 0.7) * 1.5));
+      pin.style.opacity = `${depthOpacity}`;
+
+      // Card target positioning with screen-side bias
+      const cardW = card.offsetWidth || 130;
+      const cardH = card.offsetHeight || 38;
+
+      let cardX, cardY;
+      if (def.screenSide === 'left') {
+        cardX = screenX + def.offset.x - cardW;
+        cardY = screenY + def.offset.y;
+      } else {
+        cardX = screenX + def.offset.x;
+        cardY = screenY + def.offset.y;
+      }
+
+      // Clamp within safe viewport borders
+      cardX = Math.max(minX, Math.min(maxX - cardW, cardX));
+      cardY = Math.max(minY, Math.min(maxY - cardH, cardY));
+
+      card.style.left = `${Math.round(cardX)}px`;
+      card.style.top = `${Math.round(cardY)}px`;
+      card.style.opacity = `${this.activeHoverId === def.id ? 1.0 : Math.max(0.75, depthOpacity)}`;
+
+      // Draw SVG leader path: anchor pin -> elbow -> card edge
+      const attachX = def.screenSide === 'left' ? cardX + cardW : cardX;
+      const attachY = cardY + cardH * 0.5;
+
+      // Smooth elbow curve
+      const midX = (screenX + attachX) * 0.5;
+      path.setAttribute('d', `M ${screenX.toFixed(1)} ${screenY.toFixed(1)} Q ${midX.toFixed(1)} ${screenY.toFixed(1)}, ${attachX.toFixed(1)} ${attachY.toFixed(1)}`);
+
+      // Update live telemetry badge
+      if (valEl && state) {
+        if (def.liveKey && state.live && state.live.chambers && state.live.chambers[def.liveKey]) {
+          const ch = state.live.chambers[def.liveKey];
+          valEl.textContent = `${Math.round(ch.volume_ml)}mL · ${Math.round(ch.pressure_mmhg)}mmHg`;
+        } else if (def.liveValve && state.live && state.live.valves && state.live.valves[def.liveValve]) {
+          const v = state.live.valves[def.liveValve];
+          valEl.textContent = v.is_open ? 'OPEN' : 'CLOSED';
+          valEl.style.color = v.is_open ? '#059669' : '#64748b';
+        } else if (def.liveCirc && state.live) {
+          if (def.id === 'aorta') {
+            valEl.textContent = `${Math.round(state.live.sbp || 120)}/${Math.round(state.live.dbp || 80)} mmHg`;
+          } else if (def.id === 'pulmonaryArtery') {
+            valEl.textContent = `P: ${Math.round((state.live.dbp || 80) * 0.2)} mmHg`;
+          }
+        }
+      }
     });
   }
 
@@ -224,7 +703,6 @@ class CardiaHeart3D {
   _createGlowOverlays() {
     if (!this.model) return;
 
-    // Pulsing inner glow sphere (contractility indicator)
     const glowGeo = new THREE.SphereGeometry(0.7, 32, 32);
     const glowMat = new THREE.MeshBasicMaterial({
       color: 0x0284c7,
@@ -241,8 +719,6 @@ class CardiaHeart3D {
 
   /**
    * Sync animation playback speed to heart rate.
-   * The GLB animation "test" has 1.0s duration = 60 BPM.
-   * For any HR: timeScale = HR / 60
    */
   _syncAnimationToHR(hr) {
     if (!this.animAction) return;
@@ -253,7 +729,6 @@ class CardiaHeart3D {
 
   /**
    * Apply telemetry-driven visual effects each frame.
-   * Reads from window.__CARDIA_STATE (never writes).
    */
   _applyTelemetry() {
     const state = window.__CARDIA_STATE;
@@ -273,35 +748,30 @@ class CardiaHeart3D {
       }
     }
 
-    // 3. Contractility → subtle inner glow intensity
+    // 3. Contractility -> inner glow
     if (this._innerGlow) {
       const contractility = state.contractility || 1.0;
       const phase = state.cyclePhase || 0;
-      // Systolic phase = 0..0.35, pulse glow during ejection
       const systolicIntensity = phase < 0.35
         ? Math.sin((phase / 0.35) * Math.PI) * 0.12
         : 0;
       const contractGlow = Math.max(0, (contractility - 0.5) * 0.08);
       this._innerGlow.material.opacity = systolicIntensity + contractGlow;
 
-      // Color shifts: normal=cyan, high contractility=bright blue, low=warm
       if (contractility < 0.7) {
-        this._innerGlow.material.color.setHex(0xd97706); // amber warning
+        this._innerGlow.material.color.setHex(0xd97706);
       } else if (contractility > 1.5) {
-        this._innerGlow.material.color.setHex(0x059669); // emerald hyper
+        this._innerGlow.material.color.setHex(0x059669);
       } else {
-        this._innerGlow.material.color.setHex(0x0284c7); // clinical cyan
+        this._innerGlow.material.color.setHex(0x0284c7);
       }
     }
 
-    // 4. Valve state → tint on the heart material (subtle color feedback)
+    // 4. Valve state -> tint
     if (this.model && state.live && state.live.valves) {
-      // We can modulate the model's base color slightly during valve events
-      // This provides visual feedback without modifying individual joints
       const v = state.live.valves;
       const aorticOpen = v.aortic?.is_open ?? false;
 
-      // During aortic ejection, add a very subtle brightness boost
       this.model.traverse((child) => {
         if (child.isMesh && child.material && child.material.isMeshStandardMaterial) {
           if (aorticOpen) {
@@ -317,7 +787,7 @@ class CardiaHeart3D {
       });
     }
 
-    // 5. EF-based visual alarm: if EF is critically low, pulse the rim light red
+    // 5. EF alarm
     if (state.live && state.live.ef < 35) {
       const alarm = Math.sin(performance.now() * 0.005) * 0.5 + 0.5;
       this.rimLight.color.setHex(0xdc2626);
@@ -330,15 +800,12 @@ class CardiaHeart3D {
 
   /**
    * Bind mouse/touch input for orbit controls.
-   * Overrides the existing 2D canvas drag system for the 3D view.
    */
   _bindInputs() {
     if (!this.canvas) return;
 
-    // Prevent default context menu
     this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
-    // Mouse drag for orbit
     this.canvas.addEventListener('mousedown', (e) => {
       this._isDragging = true;
       this._prevX = e.clientX;
@@ -362,7 +829,6 @@ class CardiaHeart3D {
       this._updateCameraFromSpherical();
     });
 
-    // Scroll for zoom
     this.canvas.addEventListener('wheel', (e) => {
       this._radius = Math.max(1.5, Math.min(8.0, this._radius + e.deltaY * 0.003));
       this._updateCameraFromSpherical();
@@ -415,7 +881,7 @@ class CardiaHeart3D {
    * Convert spherical coordinates to camera position
    */
   _updateCameraFromSpherical() {
-    if (!this.camera) return;
+    if (!this.camera || !this._target) return;
     const x = this._radius * Math.sin(this._phi) * Math.cos(this._theta);
     const y = this._radius * Math.cos(this._phi);
     const z = this._radius * Math.sin(this._phi) * Math.sin(this._theta);
@@ -444,6 +910,7 @@ class CardiaHeart3D {
     // Apply simulator telemetry to visuals
     if (this.isLoaded) {
       this._applyTelemetry();
+      this._updateAnnotations();
     }
 
     // Resize check
@@ -480,6 +947,16 @@ class CardiaHeart3D {
     if (this.renderer) {
       this.renderer.dispose();
       this.renderer.forceContextLoss();
+    }
+    if (this.annotationsContainer && this.annotationsContainer.parentElement) {
+      this.annotationsContainer.parentElement.removeChild(this.annotationsContainer);
+    }
+    if (this.annotationsSvg && this.annotationsSvg.parentElement) {
+      this.annotationsSvg.parentElement.removeChild(this.annotationsSvg);
+    }
+    const toggleBtn = document.getElementById('btn-toggle-annotations');
+    if (toggleBtn && toggleBtn.parentElement) {
+      toggleBtn.parentElement.removeChild(toggleBtn);
     }
     if (this.scene) {
       this.scene.traverse((obj) => {

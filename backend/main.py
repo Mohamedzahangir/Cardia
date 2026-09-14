@@ -68,6 +68,19 @@ def health_check():
     }
 
 
+@app.get("/api/assets/heart")
+def heart_asset_health_check():
+    """Verify that the beating heart 3D model asset exists and is accessible."""
+    glb_path = WORKSPACE_ROOT / "frontend" / "assets" / "heart.glb"
+    available = glb_path.exists() and glb_path.is_file()
+    size_bytes = glb_path.stat().st_size if available else 0
+    return {
+        "available": available,
+        "path": "frontend/assets/heart.glb",
+        "size_bytes": size_bytes,
+    }
+
+
 # WebSocket endpoint for real-time bidirectional simulation control and telemetry
 @app.websocket("/ws/simulation")
 async def websocket_simulation_endpoint(websocket: WebSocket):

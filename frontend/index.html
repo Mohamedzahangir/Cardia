@@ -1,6 +1,7 @@
 <!DOCTYPE html><html class="light" lang="en" style=""><head>
 <meta charset="utf-8">
 <meta content="width=device-width, initial-scale=1.0" name="viewport">
+<meta name="cardia-asset-base" content="/static">
 <title>CARDIA Hemodynamic Twin | Clinical Cockpit</title>
 <link href="https://fonts.googleapis.com" rel="preconnect">
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
@@ -310,12 +311,16 @@
 </div>
 </div>
 </div>
-<!-- CENTER MOUSE INTERACTION HINT -->
-<div class="relative z-10 my-auto self-center pointer-events-none opacity-80 hover:opacity-100 transition-opacity">
+<!-- CENTER MOUSE INTERACTION HINT & ANNOTATIONS TOGGLE -->
+<div class="relative z-10 my-auto self-center flex items-center gap-2 pointer-events-none opacity-85 hover:opacity-100 transition-opacity">
 <div class="bg-white/90 backdrop-blur border border-surface-border px-2.5 py-0.5 rounded-full flex items-center gap-1.5 text-[9px] font-mono text-text-muted shadow-sm">
 <span class="material-symbols-outlined text-[12px] text-clinical-cyan">3d_rotation</span>
-<span class="">Drag to rotate myocardium • Scroll zoom</span>
+<span class="">Drag to rotate • Scroll zoom</span>
 </div>
+<button class="pointer-events-auto bg-white/95 backdrop-blur border border-surface-border hover:border-clinical-cyan hover:text-clinical-cyan px-2 py-0.5 rounded-full flex items-center gap-1 text-[9px] font-mono text-text-primary font-semibold shadow-sm transition-all cursor-pointer" id="btn-toggle-annotations" type="button">
+<span class="material-symbols-outlined text-[12px] text-clinical-cyan">label</span>
+<span id="txt-toggle-annotations">Labels: ON</span>
+</button>
 </div>
 <!-- FLOATING HUD BOTTOM ROW -->
 <div class="relative z-10 p-2 flex items-end justify-between pointer-events-none mt-auto">
