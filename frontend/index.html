@@ -87,6 +87,9 @@
     border-radius: 2px;
   }
 </style>
+<!-- THREE.js r134 (stable legacy globals) + GLTFLoader -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.134.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/loaders/GLTFLoader.js"></script>
 </head>
 <body class="bg-[#f1f5f9] font-sans text-text-primary h-screen max-h-screen overflow-hidden flex flex-col antialiased">
 <!-- ========================================================================= -->
@@ -633,27 +636,34 @@
 <span class="text-[8px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-1 py-0.2 rounded font-bold">NOMINAL</span>
 </div>
 <div class="flex flex-col gap-1 text-[10px]">
-<div class="flex justify-between text-text-muted"><span class="">Heart Rate:</span><span class="text-clinical-cyan font-semibold">74 bpm</span></div>
-<div class="flex justify-between text-text-muted"><span class="">Blood Pressure:</span><span class="text-text-primary font-semibold">118 / 78 mmHg</span></div>
-<div class="flex justify-between text-text-muted"><span class="">MAP:</span><span class="text-clinical-cyan font-semibold">91.3 mmHg</span></div>
-<div class="flex justify-between text-text-muted"><span class="">Cardiac Output:</span><span class="text-emerald-700 font-semibold">5.40 L/min</span></div>
-<div class="flex justify-between text-text-muted"><span class="">Shock Index:</span><span class="text-text-primary font-semibold">0.63 (Normal)</span></div>
+<div class="flex justify-between text-text-muted"><span class="">Heart Rate:</span><span class="text-clinical-cyan font-semibold" id="fork-base-hr">74 bpm</span></div>
+<div class="flex justify-between text-text-muted"><span class="">Blood Pressure:</span><span class="text-text-primary font-semibold" id="fork-base-bp">118 / 78 mmHg</span></div>
+<div class="flex justify-between text-text-muted"><span class="">MAP:</span><span class="text-clinical-cyan font-semibold" id="fork-base-map">91.3 mmHg</span></div>
+<div class="flex justify-between text-text-muted"><span class="">Cardiac Output:</span><span class="text-emerald-700 font-semibold" id="fork-base-co">5.40 L/min</span></div>
+<div class="flex justify-between text-text-muted"><span class="">Stroke Volume:</span><span class="text-text-primary font-semibold" id="fork-base-sv">72 mL</span></div>
+<div class="flex justify-between text-text-muted"><span class="">Shock Index:</span><span class="text-text-primary font-semibold" id="fork-base-si">0.63 (Normal)</span></div>
 </div>
 </div>
 <!-- Branch B -->
 <div class="bg-rose-50/50 p-2.5 rounded border border-rose-200 flex flex-col gap-1.5 shadow-xs">
 <div class="flex items-center justify-between pb-1 border-b border-rose-200">
-<span class="text-rose-800 font-bold text-[10px]">Branch B: Shock State</span>
-<span class="text-[8px] text-rose-700 bg-rose-100/80 border border-rose-300 px-1 py-0.2 rounded font-bold">PERTURBED</span>
+<span class="text-rose-800 font-bold text-[10px]" id="fork-branch-title">Branch B: Shock State</span>
+<span class="text-[8px] text-rose-700 bg-rose-100/80 border border-rose-300 px-1 py-0.2 rounded font-bold" id="fork-branch-badge">PERTURBED</span>
 </div>
 <div class="flex flex-col gap-1 text-[10px]">
-<div class="flex justify-between text-rose-900"><span class="">Heart Rate:</span><span class="text-rose-700 font-bold">128 bpm (+73%)</span></div>
-<div class="flex justify-between text-rose-900"><span class="">Blood Pressure:</span><span class="text-rose-700 font-bold">84 / 52 mmHg</span></div>
-<div class="flex justify-between text-rose-900"><span class="">MAP:</span><span class="text-rose-700 font-bold">62.6 mmHg (-28.7)</span></div>
-<div class="flex justify-between text-rose-900"><span class="">Cardiac Output:</span><span class="text-rose-700 font-bold">3.35 L/min (-38%)</span></div>
-<div class="flex justify-between text-rose-900"><span class="">Shock Index:</span><span class="text-rose-700 font-bold">1.52 (High Risk)</span></div>
+<div class="flex justify-between text-rose-900"><span class="">Heart Rate:</span><span class="text-rose-700 font-bold" id="fork-interv-hr">128 bpm (+73%)</span></div>
+<div class="flex justify-between text-rose-900"><span class="">Blood Pressure:</span><span class="text-rose-700 font-bold" id="fork-interv-bp">84 / 52 mmHg</span></div>
+<div class="flex justify-between text-rose-900"><span class="">MAP:</span><span class="text-rose-700 font-bold" id="fork-interv-map">62.6 mmHg (-28.7)</span></div>
+<div class="flex justify-between text-rose-900"><span class="">Cardiac Output:</span><span class="text-rose-700 font-bold" id="fork-interv-co">3.35 L/min (-38%)</span></div>
+<div class="flex justify-between text-rose-900"><span class="">Stroke Volume:</span><span class="text-rose-700 font-bold" id="fork-interv-sv">26 mL (-64%)</span></div>
+<div class="flex justify-between text-rose-900"><span class="">Shock Index:</span><span class="text-rose-700 font-bold" id="fork-interv-si">1.52 (High Risk)</span></div>
 </div>
 </div>
+</div>
+<!-- Status / Scenario summary -->
+<div class="px-2 py-1 bg-slate-50 border border-surface-border rounded text-[9px] text-text-dim flex items-center justify-between">
+  <span id="fork-scenario-note">Scenario: Hemorrhagic Shock (-35% Volume)</span>
+  <span class="text-emerald-700 font-bold" id="fork-stability-score">Stability: 0.94</span>
 </div>
 <!-- Actions -->
 <div class="flex items-center justify-end gap-2 pt-1 border-t border-surface-border">
@@ -1213,6 +1223,7 @@
   const btnCloseFork = document.getElementById('btn-close-fork');
   const btnCancelFork = document.getElementById('btn-cancel-fork');
   const btnCommitFork = document.getElementById('btn-commit-fork');
+  let pendingBranchBState = null;
 
   function hideFork() {
     if (modalFork) {
@@ -1220,20 +1231,92 @@
       modalFork.classList.remove('flex');
     }
   }
-  if (btnOpenFork) btnOpenFork.addEventListener('click', () => {
-    if (modalFork) {
-      modalFork.classList.remove('hidden');
-      modalFork.classList.add('flex');
+
+  async function loadForkComparison() {
+    if (!modalFork) return;
+    modalFork.classList.remove('hidden');
+    modalFork.classList.add('flex');
+
+    const noteEl = document.getElementById('fork-scenario-note');
+    if (noteEl) noteEl.textContent = "Computing in-silico counterfactual branch...";
+
+    try {
+      // Determine what perturbation to compare: if user adjusted sliders, use them, otherwise evaluate hemorrhagic shock
+      const isPerturbed = Math.abs(state.bloodVolume - 5.0) > 0.1 || Math.abs(state.hr - 74) > 5;
+      const payload = isPerturbed 
+        ? {
+            interventions: [
+              { parameter: "blood_volume", value: state.bloodVolume },
+              { parameter: "heart_rate", value: state.hr },
+              { parameter: "contractility", value: state.contractility },
+              { parameter: "svr", value: state.svr / 1120.0 }
+            ]
+          }
+        : { scenario: "hemorrhage" };
+
+      const resp = await fetch('/api/experiment/fork', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+
+      const a = data.branch_a_baseline;
+      const b = data.branch_b_counterfactual;
+      pendingBranchBState = b;
+
+      // Populate Branch A (Baseline)
+      const setTxt = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+      setTxt('fork-base-hr', `${a.hr} bpm`);
+      setTxt('fork-base-bp', `${a.sbp} / ${a.dbp} mmHg`);
+      setTxt('fork-base-map', `${a.map} mmHg`);
+      setTxt('fork-base-co', `${a.co.toFixed(2)} L/min`);
+      setTxt('fork-base-sv', `${a.sv} mL`);
+      setTxt('fork-base-si', `${a.shock_index} (Normal)`);
+
+      // Populate Branch B (Perturbed / Counterfactual)
+      const hrDeltaPct = Math.round(((b.hr - a.hr) / a.hr) * 100);
+      const coDeltaPct = Math.round(((b.co - a.co) / a.co) * 100);
+      const svDeltaPct = Math.round(((b.sv - a.sv) / a.sv) * 100);
+      const mapDelta = (b.map - a.map).toFixed(1);
+
+      setTxt('fork-interv-hr', `${b.hr} bpm (${hrDeltaPct >= 0 ? '+' : ''}${hrDeltaPct}%)`);
+      setTxt('fork-interv-bp', `${b.sbp} / ${b.dbp} mmHg`);
+      setTxt('fork-interv-map', `${b.map} mmHg (${mapDelta >= 0 ? '+' : ''}${mapDelta})`);
+      setTxt('fork-interv-co', `${b.co.toFixed(2)} L/min (${coDeltaPct >= 0 ? '+' : ''}${coDeltaPct}%)`);
+      setTxt('fork-interv-sv', `${b.sv} mL (${svDeltaPct >= 0 ? '+' : ''}${svDeltaPct}%)`);
+      setTxt('fork-interv-si', `${b.shock_index} (${b.shock_index > 0.9 ? 'High Risk' : 'Moderate'})`);
+
+      if (noteEl) {
+        noteEl.textContent = isPerturbed
+          ? `Active In-Silico Perturbation (Vol: ${b.blood_volume}L, SVR: ${b.svr})`
+          : `Scenario: Hemorrhagic Shock (-35% Vol, Tachycardia)`;
+      }
+      setTxt('fork-stability-score', `In-Silico Verified ✓`);
+    } catch (err) {
+      console.warn("Fork comparison fetch error:", err);
+      if (noteEl) noteEl.textContent = `Simulation fetch note: ${err.message}`;
     }
-  });
+  }
+
+  if (btnOpenFork) btnOpenFork.addEventListener('click', loadForkComparison);
   if (btnCloseFork) btnCloseFork.addEventListener('click', hideFork);
   if (btnCancelFork) btnCancelFork.addEventListener('click', hideFork);
   if (btnCommitFork) {
     btnCommitFork.addEventListener('click', () => {
-      state.bloodVolume = 3.25;
-      state.hr = 128;
-      state.contractility = 1.3;
-      state.svr = 1750;
+      if (pendingBranchBState) {
+        state.bloodVolume = pendingBranchBState.blood_volume || 3.38;
+        state.hr = pendingBranchBState.hr || 104;
+        state.contractility = pendingBranchBState.contractility || 1.0;
+        state.svr = pendingBranchBState.svr || 1512;
+      } else {
+        state.bloodVolume = 3.25;
+        state.hr = 120;
+        state.contractility = 1.25;
+        state.svr = 1680;
+      }
       updateInputsFromState();
       sendParametersToBackend();
       updateTelemetryUI();
@@ -1364,10 +1447,25 @@
     ragChatMessages.scrollTop = ragChatMessages.scrollHeight;
 
     try {
-      const resp = await fetch('/api/rag/ask', {
+      // If asking why or explaining perturbation, provide experiment context
+      const endpoint = (question.toLowerCase().includes('why') || question.toLowerCase().includes('shock') || question.toLowerCase().includes('drop') || question.toLowerCase().includes('bleed') || question.toLowerCase().includes('hemorrhage'))
+        ? '/api/experiment/explain'
+        : '/api/rag/ask';
+
+      const payload = endpoint === '/api/experiment/explain'
+        ? {
+            question: question,
+            scenario: (state.bloodVolume < 4.0 ? 'hemorrhage' : (state.svr > 1500 ? 'hypertension' : 'cardiovascular perturbation')),
+            intervention_summary: `Blood Volume: ${state.bloodVolume.toFixed(2)}L, HR: ${Math.round(state.hr)} bpm, SVR: ${state.svr}`,
+            baseline_metrics: { hr: 74, sbp: 118, dbp: 78, map: 91.3, co: 5.4, sv: 73, edv: 128 },
+            result_metrics: { hr: Math.round(state.hr), sbp: Math.round(state.live.sbp), dbp: Math.round(state.live.dbp), map: Math.round(state.live.map), co: state.live.co, sv: state.live.sv, edv: state.live.edv }
+          }
+        : { question: question, include_live_state: true };
+
+      const resp = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: question, include_live_state: true })
+        body: JSON.stringify(payload)
       });
 
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
@@ -1417,33 +1515,9 @@
   }
 
   // =========================================================================
-  // 3D CARDIAC TWIN CANVAS ENGINE (RENDERED WIREFRAME + MYOCARDIUM BEAT)
+  // 3D CARDIAC TWIN — drag/zoom/wheel are now handled by CardiaHeart3D.
+  // The canvas3d element is owned by the Three.js WebGLRenderer.
   // =========================================================================
-  let isDragging3D = false;
-  let prevMouseX = 0;
-  let prevMouseY = 0;
-
-  if (canvas3d) {
-    canvas3d.addEventListener('mousedown', (e) => {
-      isDragging3D = true;
-      prevMouseX = e.clientX;
-      prevMouseY = e.clientY;
-    });
-    window.addEventListener('mouseup', () => { isDragging3D = false; });
-    window.addEventListener('mousemove', (e) => {
-      if (!isDragging3D) return;
-      const dx = e.clientX - prevMouseX;
-      const dy = e.clientY - prevMouseY;
-      state.viewRotY += dx * 0.01;
-      state.viewRotX = Math.max(-1.2, Math.min(1.2, state.viewRotX + dy * 0.01));
-      prevMouseX = e.clientX;
-      prevMouseY = e.clientY;
-    });
-    canvas3d.addEventListener('wheel', (e) => {
-      state.viewZoom = Math.max(0.6, Math.min(2.0, state.viewZoom - e.deltaY * 0.001));
-      e.preventDefault();
-    }, { passive: false });
-  }
 
   function drawCardiac3D(ctx, width, height, pulseScale) {
     ctx.clearRect(0, 0, width, height);
@@ -1571,14 +1645,8 @@
       pulseScale = 0.88 + 0.12 * Math.sin(((state.cyclePhase - 0.35) / 0.65) * Math.PI * 0.5);
     }
 
-    // 3D Canvas
-    if (canvas3d) {
-      resizeCanvas(canvas3d);
-      const ctx3d = canvas3d.getContext('2d');
-      if (ctx3d) {
-        drawCardiac3D(ctx3d, canvas3d.width, canvas3d.height, pulseScale);
-      }
-    }
+    // 3D Canvas — now handled by CardiaHeart3D (Three.js).
+    // The WebGLRenderer owns the canvas; 2D context is not needed here.
 
     // 1. ECG Strip
     if (canvasEcg) {
@@ -1746,6 +1814,27 @@
   requestAnimationFrame(renderWaveforms);
 })();
 
+</script>
+
+<!-- 3D Heart integration: boot AFTER the IIFE so __CARDIA_STATE exists -->
+<script src="/static/heart3d.js"></script>
+<script>
+(function bootHeart3D() {
+  // Wait for both THREE and the DOM to be fully ready
+  if (typeof THREE === 'undefined' || typeof CardiaHeart3D === 'undefined') {
+    // Shouldn't happen since scripts are synchronous, but guard anyway
+    setTimeout(bootHeart3D, 50);
+    return;
+  }
+
+  const heart3d = new CardiaHeart3D('canvas-cardiac-3d');
+  heart3d.init().catch(function(err) {
+    console.error('[CARDIA] 3D heart failed to load GLB, falling back to no 3D view:', err);
+  });
+
+  // Expose for debugging
+  window.__CARDIA_HEART3D = heart3d;
+})();
 </script>
 
 

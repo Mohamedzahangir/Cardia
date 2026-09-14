@@ -27,6 +27,7 @@ if str(WORKSPACE_ROOT) not in sys.path:
 from backend.services.sim_service import sim_service
 from backend.api.ml_routes import router as ml_router
 from backend.api.rag_routes import router as rag_router
+from backend.api.experiment_routes import router as experiment_router
 
 
 @asynccontextmanager
@@ -55,6 +56,7 @@ app.add_middleware(
 # Include API Routers
 app.include_router(ml_router)
 app.include_router(rag_router)
+app.include_router(experiment_router)
 
 
 @app.get("/health")
