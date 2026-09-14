@@ -33,6 +33,44 @@ The central idea is simple:
 
 ---
 
+# Quick Start: How to Run
+
+Running CARDIA is unified into a single command because the **FastAPI backend serves both the API/WebSockets and the frontend**.
+
+### 1. Install Dependencies
+
+From the project root directory:
+
+```bash
+pip install -r backend/requirements.txt
+```
+
+### 2. Start the Backend & Frontend
+
+From the project root directory:
+
+```bash
+python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
+```
+
+> **Tip**: Add `--reload` during development for automatic reloading when files change.
+
+### 3. Open the Application
+
+Open your web browser and navigate to:
+
+👉 **[http://localhost:8000](http://localhost:8000)** (or `http://127.0.0.1:8000`)
+
+### What Happens Automatically
+
+- **Frontend Cockpit**: Served at `/` (`frontend/index.html`).
+- **3D Heart Visualization**: Beating 3D GLB model loads from `/static/assets/heart.glb` with fixed anatomical annotations.
+- **Physics Engine & Telemetry**: 0D numerical ODE solver streams real-time telemetry over WebSocket at `/ws/simulation`.
+- **AI & Reasoning APIs**: ML inference (`/api/ml/predict`), RAG reasoning (`/api/rag/ask`), and counterfactual experiments (`/api/experiment/run`) are immediately live.
+- **Asset Health Check**: Verified at `/api/assets/heart`.
+
+---
+
 # What Makes CARDIA Different?
 
 Most cardiovascular applications focus on one of the following:
