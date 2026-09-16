@@ -3,6 +3,12 @@
 // Connects UI to Live WebSocket Simulation, ML Predictor, and RAG Copilot
 // =========================================================================
 
+window.CARDIA_BACKEND = (function() {
+  var h = window.location.hostname;
+  if (h === 'localhost' || h === '127.0.0.1') return '';
+  return 'https://cardia-0e68.onrender.com';
+})();
+
 (function() {
   window.__CARDIA_STATE = {
     // Patient Profile
@@ -288,8 +294,10 @@
   let socketReconnectTimer = null;
 
   function connectSimulationWebSocket() {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws/simulation`;
+    const backendBase = window.CARDIA_BACKEND || '';
+    const wsProtocol = backendBase ? 'wss:' : (window.location.protocol === 'https:' ? 'wss:' : 'ws:');
+    const wsHost = backendBase ? backendBase.replace(/^https?:\/\//, '') : window.location.host;
+    const wsUrl = `${wsProtocol}//${wsHost}/ws/simulation`;
 
     socket = new WebSocket(wsUrl);
 
@@ -610,7 +618,7 @@
       btnRunMl.disabled = true;
 
       try {
-        const resp = await fetch('/api/ml/predict', {
+        const resp = await fetch((window.CARDIA_BACKEND || '') + '/api/ml/predict', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -692,7 +700,7 @@
     ragChatMessages.scrollTop = ragChatMessages.scrollHeight;
 
     try {
-      const resp = await fetch('/api/rag/ask', {
+      const resp = await fetch((window.CARDIA_BACKEND || '') + '/api/rag/ask', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ question: question, include_live_state: true })

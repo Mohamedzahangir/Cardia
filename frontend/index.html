@@ -2,6 +2,13 @@
 <meta charset="utf-8">
 <meta content="width=device-width, initial-scale=1.0" name="viewport">
 <meta name="cardia-asset-base" content="/static">
+<script>
+window.CARDIA_BACKEND = (function() {
+  var h = window.location.hostname;
+  if (h === 'localhost' || h === '127.0.0.1') return '';
+  return 'https://cardia-0e68.onrender.com';
+})();
+</script>
 <title>CARDIA Hemodynamic Twin | Clinical Cockpit</title>
 <link href="https://fonts.googleapis.com" rel="preconnect">
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
@@ -985,9 +992,10 @@
   let socketReconnectTimer = null;
 
   function connectSimulationWebSocket() {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.host || 'localhost:8000';
-    const wsUrl = `${protocol}//${host}/ws/simulation`;
+    const backendBase = window.CARDIA_BACKEND || '';
+    const wsProtocol = backendBase ? 'wss:' : (window.location.protocol === 'https:' ? 'wss:' : 'ws:');
+    const wsHost = backendBase ? backendBase.replace(/^https?:\/\//, '') : window.location.host;
+    const wsUrl = `${wsProtocol}//${wsHost}/ws/simulation`;
 
     socket = new WebSocket(wsUrl);
 
@@ -1403,7 +1411,7 @@
           }
         : { scenario: "hemorrhage" };
 
-      const apiPrefix = window.location.protocol === 'file:' ? 'http://localhost:8000' : '';
+      const apiPrefix = window.CARDIA_BACKEND || '';
       const resp = await fetch(apiPrefix + '/api/experiment/fork', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1515,7 +1523,7 @@
       btnRunMl.disabled = true;
 
       try {
-        const apiPrefix = window.location.protocol === 'file:' ? 'http://localhost:8000' : '';
+        const apiPrefix = window.CARDIA_BACKEND || '';
         const resp = await fetch(apiPrefix + '/api/ml/predict', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1613,7 +1621,7 @@
           }
         : { question: question, include_live_state: true };
 
-      const apiPrefix = window.location.protocol === 'file:' ? 'http://localhost:8000' : '';
+      const apiPrefix = window.CARDIA_BACKEND || '';
       const resp = await fetch(apiPrefix + endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
