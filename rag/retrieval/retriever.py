@@ -22,17 +22,26 @@ DEFAULT_TOP_K = 5
 
 
 # ============================================================
-# LOAD MODELS / DATABASE
+# LAZY EMBEDDING MODEL
 # ============================================================
 
-print("Loading CARDIA embedding model...")
+_embedding_model = None
 
-_embedding_model = SentenceTransformer(
-    EMBEDDING_MODEL_NAME
-)
 
-print("Embedding model loaded.")
+def get_embedding_model():
+    global _embedding_model
+    if _embedding_model is None:
+        print("Loading CARDIA embedding model...")
+        _embedding_model = SentenceTransformer(
+            EMBEDDING_MODEL_NAME
+        )
+        print("Embedding model loaded.")
+    return _embedding_model
 
+
+# ============================================================
+# LOAD QDRANT DATABASE
+# ============================================================
 
 print("Opening CARDIA Qdrant database...")
 
@@ -159,7 +168,9 @@ def retrieve(
     # Create question embedding
     # --------------------------------------------------------
 
-    question_embedding = _embedding_model.encode(
+    model = get_embedding_model()
+
+    question_embedding = model.encode(
         question,
         normalize_embeddings=True,
     ).tolist()
