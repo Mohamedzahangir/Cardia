@@ -1,9 +1,21 @@
+"""
+CARDIA TF-IDF Retriever.
+
+Lightweight deterministic retrieval using sklearn TfidfVectorizer
+and cosine similarity over the curated CARDIA physiology chunks.
+
+Replaces the previous SentenceTransformer + Qdrant implementation
+to eliminate the heavy PyTorch/model memory footprint on Render's
+512 MiB free tier.
+"""
+
 from pathlib import Path
 from typing import Optional
 
-from qdrant_client import QdrantClient
-from qdrant_client.models import FieldCondition, Filter, MatchValue
-from sentence_transformers import SentenceTransformer
+import json
+import numpy as np
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 
 # ============================================================
@@ -12,99 +24,87 @@ from sentence_transformers import SentenceTransformer
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-QDRANT_PATH = BASE_DIR / "data" / "qdrant"
-
-COLLECTION_NAME = "cardia_physiology"
-
-EMBEDDING_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
+CHUNKS_PATH = BASE_DIR / "data" / "chunks" / "cardia_chunks.json"
 
 DEFAULT_TOP_K = 5
 
 
 # ============================================================
-# LAZY EMBEDDING MODEL
+# LAZY INDEX
 # ============================================================
+# The TF-IDF index is built once on first use and cached.
 
-_embedding_model = None
-
-
-def get_embedding_model():
-    global _embedding_model
-    if _embedding_model is None:
-        print("Loading CARDIA embedding model...")
-        _embedding_model = SentenceTransformer(
-            EMBEDDING_MODEL_NAME
-        )
-        print("Embedding model loaded.")
-    return _embedding_model
+_chunks: list[dict] = []
+_vectorizer: TfidfVectorizer | None = None
+_tfidf_matrix = None
 
 
-# ============================================================
-# LOAD QDRANT DATABASE
-# ============================================================
-
-print("Opening CARDIA Qdrant database...")
-
-_qdrant_client = QdrantClient(
-    path=str(QDRANT_PATH)
-)
-
-print("Qdrant database opened.")
-
-
-# ============================================================
-# BUILD OPTIONAL METADATA FILTER
-# ============================================================
-
-def _build_filter(
-    topic: Optional[str] = None,
-    organ: Optional[str] = None,
-):
+def _build_search_text(chunk: dict) -> str:
     """
-    Build a Qdrant metadata filter.
-
-    If no topic or organ is supplied, no filter is used.
-
-    Parameters
-    ----------
-    topic:
-        Optional CARDIA topic such as:
-        cardiac_output
-        cardiac_conduction
-        cardiac_valves
-        hemodynamics
-
-    organ:
-        Optional CARDIA organ/system such as:
-        heart
-        cardiac_conduction_system
-        cardiovascular_system
+    Combine searchable fields from a chunk into a single
+    document string for TF-IDF indexing.
     """
 
-    conditions = []
+    parts = []
 
+    title = chunk.get("title", "")
+    if title:
+        parts.append(str(title))
+
+    text = chunk.get("text", "")
+    if text:
+        parts.append(str(text))
+
+    topic = chunk.get("topic", "")
     if topic:
-        conditions.append(
-            FieldCondition(
-                key="topic",
-                match=MatchValue(value=topic),
-            )
-        )
+        parts.append(str(topic).replace("_", " "))
 
+    organ = chunk.get("organ", "")
     if organ:
-        conditions.append(
-            FieldCondition(
-                key="organ",
-                match=MatchValue(value=organ),
-            )
-        )
+        parts.append(str(organ).replace("_", " "))
 
-    if not conditions:
-        return None
+    mechanisms = chunk.get("mechanism", [])
+    if mechanisms:
+        parts.append(" ".join(str(m) for m in mechanisms).replace("_", " "))
 
-    return Filter(
-        must=conditions
+    equations = chunk.get("equation", [])
+    if equations:
+        parts.append(" ".join(str(e) for e in equations))
+
+    source_title = chunk.get("source_title", "")
+    if source_title:
+        parts.append(str(source_title))
+
+    author = chunk.get("author", "")
+    if author:
+        parts.append(str(author))
+
+    return " ".join(parts)
+
+
+def _ensure_index():
+    """
+    Build the TF-IDF index on first call. Subsequent calls are no-ops.
+    """
+
+    global _chunks, _vectorizer, _tfidf_matrix
+
+    if _vectorizer is not None:
+        return
+
+    with open(CHUNKS_PATH, "r", encoding="utf-8") as f:
+        _chunks = json.load(f)
+
+    documents = [_build_search_text(c) for c in _chunks]
+
+    _vectorizer = TfidfVectorizer(
+        lowercase=True,
+        stop_words="english",
+        ngram_range=(1, 2),
+        max_features=10000,
     )
+
+    _tfidf_matrix = _vectorizer.fit_transform(documents)
 
 
 # ============================================================
@@ -119,6 +119,8 @@ def retrieve(
 ):
     """
     Retrieve the most relevant physiological evidence.
+
+    Uses TF-IDF cosine similarity over curated CARDIA chunks.
 
     Parameters
     ----------
@@ -165,36 +167,55 @@ def retrieve(
         )
 
     # --------------------------------------------------------
-    # Create question embedding
+    # Ensure index is built
     # --------------------------------------------------------
 
-    model = get_embedding_model()
-
-    question_embedding = model.encode(
-        question,
-        normalize_embeddings=True,
-    ).tolist()
+    _ensure_index()
 
     # --------------------------------------------------------
-    # Build optional metadata filter
+    # Transform query into TF-IDF vector
     # --------------------------------------------------------
 
-    query_filter = _build_filter(
-        topic=topic,
-        organ=organ,
-    )
+    query_vec = _vectorizer.transform([question])
 
     # --------------------------------------------------------
-    # Search Qdrant
+    # Compute cosine similarity against all chunks
     # --------------------------------------------------------
 
-    search_results = _qdrant_client.query_points(
-        collection_name=COLLECTION_NAME,
-        query=question_embedding,
-        query_filter=query_filter,
-        limit=top_k,
-        with_payload=True,
-    ).points
+    similarities = cosine_similarity(
+        query_vec, _tfidf_matrix
+    ).flatten()
+
+    # --------------------------------------------------------
+    # Apply metadata filters
+    # --------------------------------------------------------
+
+    filtered_indices = list(range(len(_chunks)))
+
+    if topic is not None:
+        filtered_indices = [
+            i for i in filtered_indices
+            if _chunks[i].get("topic") == topic
+        ]
+
+    if organ is not None:
+        filtered_indices = [
+            i for i in filtered_indices
+            if _chunks[i].get("organ") == organ
+        ]
+
+    # --------------------------------------------------------
+    # Sort filtered chunks by similarity descending
+    # --------------------------------------------------------
+
+    scored = [
+        (i, similarities[i])
+        for i in filtered_indices
+    ]
+
+    scored.sort(key=lambda x: x[1], reverse=True)
+
+    top_results = scored[:top_k]
 
     # --------------------------------------------------------
     # Convert results into clean Python dictionaries
@@ -202,82 +223,26 @@ def retrieve(
 
     evidence = []
 
-    for result in search_results:
-
-        payload = result.payload or {}
+    for idx, score in top_results:
+        chunk = _chunks[idx]
 
         evidence.append(
             {
-                # ------------------------------------------------
-                # Identity
-                # ------------------------------------------------
-                "chunk_id": payload.get(
-                    "chunk_id"
-                ),
-
-                "title": payload.get(
-                    "title"
-                ),
-
-                "text": payload.get(
-                    "text"
-                ),
-
-                "score": float(
-                    result.score
-                ),
-
-                # ------------------------------------------------
-                # Source provenance
-                # ------------------------------------------------
-                "source": payload.get(
-                    "source"
-                ),
-
-                "source_title": payload.get(
-                    "source_title"
-                ),
-
-                "source_type": payload.get(
-                    "source_type"
-                ),
-
-                "authority_level": payload.get(
-                    "authority_level"
-                ),
-
-                "author": payload.get(
-                    "author"
-                ),
-
-                "chapter": payload.get(
-                    "chapter"
-                ),
-
-                "page": payload.get(
-                    "page"
-                ),
-
-                # ------------------------------------------------
-                # Physiological metadata
-                # ------------------------------------------------
-                "topic": payload.get(
-                    "topic"
-                ),
-
-                "organ": payload.get(
-                    "organ"
-                ),
-
-                "mechanism": payload.get(
-                    "mechanism",
-                    []
-                ),
-
-                "equation": payload.get(
-                    "equation",
-                    []
-                ),
+                "chunk_id": chunk.get("chunk_id"),
+                "title": chunk.get("title"),
+                "text": chunk.get("text"),
+                "score": float(round(score, 6)),
+                "source": chunk.get("source"),
+                "source_title": chunk.get("source_title"),
+                "source_type": chunk.get("source_type"),
+                "authority_level": chunk.get("authority_level"),
+                "author": chunk.get("author"),
+                "chapter": chunk.get("chapter"),
+                "page": chunk.get("page"),
+                "topic": chunk.get("topic"),
+                "organ": chunk.get("organ"),
+                "mechanism": chunk.get("mechanism", []),
+                "equation": chunk.get("equation", []),
             }
         )
 
